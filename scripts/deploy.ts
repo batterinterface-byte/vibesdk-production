@@ -1056,7 +1056,7 @@ class CloudflareDeploymentManager {
 			}
 					'- Set workers_dev: true',
 					'- Set preview_urls: true'
-				]);
+				
 				return '';
 			}
 
