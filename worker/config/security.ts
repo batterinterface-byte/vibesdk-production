@@ -42,9 +42,11 @@ export function getConfigurableSecurityDefaults(): ConfigurableSecuritySettings 
 export function getAllowedOrigins(env: Env): string[] {
     const origins: string[] = [];
     
-    // Production domains
+    // Production domain or preview domain
     if (env.CUSTOM_DOMAIN) {
         origins.push(`https://${env.CUSTOM_DOMAIN}`);
+    } else {
+        origins.push('https://*.workers.dev');
     }
     
     // Development origins (only in development)
@@ -60,12 +62,24 @@ export function getAllowedOrigins(env: Env): string[] {
     return origins;
 }
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 export function isOriginAllowed(env: Env, origin: string): boolean {
     const allowedOrigins = getAllowedOrigins(env);
     if (!origin) return false;
-    
-    // Check against allowed origins
-    return allowedOrigins.includes(origin);
+
+    if (allowedOrigins.includes(origin)) {
+        return true;
+    }
+
+    return allowedOrigins.some((allowedOrigin) => {
+        if (!allowedOrigin.includes('*')) {
+            return false;
+        }
+
+        const regex = new RegExp(`^${escapeRegExp(allowedOrigin).replace(/\\\*/g, '.*')}$`, 'i');
+        return regex.test(origin);
+    });
 }
 
 /**
@@ -74,7 +88,7 @@ export function isOriginAllowed(env: Env, origin: string): boolean {
  */
 export function getCORSConfig(env: Env): CORSConfig {
     return {
-        origin: getAllowedOrigins(env),
+        origin: (origin: string) => isOriginAllowed(env, origin) ? origin : undefined,
         allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
         allowHeaders: [
             'Content-Type',
@@ -186,7 +200,7 @@ export function getSecureHeadersConfig(env: Env): SecureHeadersConfig {
                 // WebSocket connections
                 "ws://localhost:*",
                 "wss://localhost:*",
-                `wss://${env.CUSTOM_DOMAIN || '*'}`,
+                env.CUSTOM_DOMAIN ? `wss://${env.CUSTOM_DOMAIN}` : 'wss://*.workers.dev',
                 // API endpoints
                 "https://api.github.com",
                 "https://api.cloudflare.com"

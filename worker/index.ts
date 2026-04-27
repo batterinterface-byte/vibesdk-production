@@ -32,6 +32,28 @@ function setOriginControl(env: Env, request: Request, currentHeaders: Headers): 
     return currentHeaders;
 }
 
+function resolvePreviewDomain(env: Env, request: Request): string {
+    const url = new URL(request.url);
+    const host = url.hostname;
+
+    if (env.CUSTOM_PREVIEW_DOMAIN && env.CUSTOM_PREVIEW_DOMAIN.trim() !== '') {
+        return env.CUSTOM_PREVIEW_DOMAIN;
+    }
+
+    if (env.CUSTOM_DOMAIN && env.CUSTOM_DOMAIN.trim() !== '') {
+        return env.CUSTOM_DOMAIN;
+    }
+
+    if (host.startsWith('b-')) {
+        const firstDotIndex = host.indexOf('.');
+        if (firstDotIndex !== -1) {
+            return host.slice(firstDotIndex + 1);
+        }
+    }
+
+    return host;
+}
+
 /**
  * Handles requests for user-deployed applications on subdomains.
  * It first attempts to proxy to a live development sandbox. If that fails,
@@ -143,15 +165,9 @@ const worker = {
         // logger.info(`Received request: ${request.method} ${request.url}`);
 		// --- Pre-flight Checks ---
 
-		// 1. Critical configuration check: Ensure custom domain is set.
-        const previewDomain = getPreviewDomain(env);
-		if (!previewDomain || previewDomain.trim() === '') {
-			logger.error('FATAL: env.CUSTOM_DOMAIN is not configured in wrangler.toml or the Cloudflare dashboard.');
-			return new Response('Server configuration error: Application domain is not set.', { status: 500 });
-		}
-
 		const url = new URL(request.url);
 		const { hostname, pathname } = url;
+		const previewDomain = resolvePreviewDomain(env, request);
 
 		// 2. Security: Immediately reject any requests made via an IP address.
 		const ipRegex = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
@@ -163,7 +179,7 @@ const worker = {
 
 		// Normalize hostnames for both local development (localhost) and production.
 		const isMainDomainRequest =
-			hostname === env.CUSTOM_DOMAIN || hostname === 'localhost';
+			hostname === previewDomain || hostname === 'localhost';
 		const isSubdomainRequest =
 			hostname.endsWith(`.${previewDomain}`) ||
 			(hostname.endsWith('.localhost') && hostname !== 'localhost');
