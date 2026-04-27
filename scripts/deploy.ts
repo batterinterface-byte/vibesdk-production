@@ -1054,11 +1054,6 @@ class CloudflareDeploymentManager {
 
 				return 'workers.dev';
 			}
-					'- Set workers_dev: true',
-					'- Set preview_urls: true'
-				
-				return '';
-			}
 
 			console.log(
 				`🔧 Updating wrangler.jsonc routes with custom domain: ${customDomain}`,
