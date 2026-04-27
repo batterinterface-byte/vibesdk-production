@@ -1051,6 +1051,12 @@ class CloudflareDeploymentManager {
 					'- Set workers_dev: true',
 					'- Set preview_urls: true'
 				]);
+
+				return 'workers.dev';
+			}
+					'- Set workers_dev: true',
+					'- Set preview_urls: true'
+				]);
 				return '';
 			}
 
@@ -1740,8 +1746,6 @@ class CloudflareDeploymentManager {
 			'SENTRY_DSN',
 			'AI_PROXY_JWT_SECRET',
 			'MAX_SANDBOX_INSTANCES',
-			'CUSTOM_DOMAIN',
-			'CUSTOM_PREVIEW_DOMAIN',
 			'SANDBOX_INSTANCE_TYPE',
 			'DISPATCH_NAMESPACE',
 			'ALLOCATION_STRATEGY',
@@ -2067,7 +2071,7 @@ class CloudflareDeploymentManager {
 					`\n🎉 Complete deployment finished successfully in ${duration}s!`,
 				);
 				console.log(
-					`✅ Your Cloudflare Orange Build platform is now live at https://${customDomain}! 🚀`,
+					`✅ Your Cloudflare Orange Build platform is now live at https://${customDomain === 'workers.dev' ? 'your-project.workers.dev' : customDomain}! 🚀`,
 				);
 				
 				// Restore ARM64 flags for continued local development
