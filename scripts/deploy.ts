@@ -1212,38 +1212,12 @@ class CloudflareDeploymentManager {
 			process.env.MAX_SANDBOX_INSTANCES ||
 			this.config.vars?.MAX_SANDBOX_INSTANCES || "10";
 
-		if (!maxInstances) {
-			console.log(
-				'ℹ️  MAX_SANDBOX_INSTANCES not set in environment variables or wrangler.jsonc vars, skipping container configuration update',
-			);
-			return;
-		}
-
-		const source = process.env.MAX_SANDBOX_INSTANCES
-			? 'environment variable'
-			: 'wrangler.jsonc vars';
-		console.log(
-			`🔧 Using MAX_SANDBOX_INSTANCES from ${source}: ${maxInstances}`,
-		);
-
-		const maxInstancesNum = parseInt(maxInstances, 10);
-		if (isNaN(maxInstancesNum) || maxInstancesNum <= 0) {
-			console.warn(
-				`⚠️  Invalid MAX_SANDBOX_INSTANCES value: ${maxInstances}, skipping update`,
-			);
-			return;
-		}
-
-		console.log(
-			`🔧 Updating container configuration: MAX_SANDBOX_INSTANCES=${maxInstancesNum}`,
-		);
-
 		try {
 			const { content, config } = this.readWranglerConfig();
 
-			if (!config.containers || !Array.isArray(config.containers)) {
-				console.warn(
-					'⚠️  No containers configuration found in wrangler.jsonc',
+			if (!config.containers || !Array.isArray(config.containers) || config.containers.length === 0) {
+				console.log(
+					'ℹ️  No containers configuration found - containers disabled for free tier',
 				);
 				return;
 			}
@@ -1260,30 +1234,12 @@ class CloudflareDeploymentManager {
 				return;
 			}
 
-			const oldMaxInstances =
-				config.containers[sandboxContainerIndex].max_instances;
-
-			// Use jsonc-parser's modify function to properly edit the file
-			// Path to the max_instances field: ['containers', index, 'max_instances']
-			const edits = modify(
-				content,
-				['containers', sandboxContainerIndex, 'max_instances'],
-				maxInstancesNum,
-				CloudflareDeploymentManager.JSONC_FORMAT_OPTIONS,
-			);
-
-			// Apply the edits to get the updated content
-			const updatedContent = applyEdits(content, edits);
-
-			// Write back the updated configuration
-			this.writeWranglerConfig(updatedContent);
-
-			this.logSuccess(
-				`Updated UserAppSandboxService max_instances: ${oldMaxInstances} → ${maxInstancesNum}`
-			);
+			// Containers are disabled for free tier, skip update
+			console.log('ℹ️  Skipping container max_instances update (containers not available)');
+			return;
 		} catch (error) {
 			throw new DeploymentError(
-				'Failed to update container configuration',
+				'Failed to check container configuration',
 				error instanceof Error ? error : new Error(String(error)),
 			);
 		}
